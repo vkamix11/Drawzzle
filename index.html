@@ -418,7 +418,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 <!-- ══ CONFIRM REVEAL ══════════════════════════════════ -->
 <div id="confirm-reveal">
   <div class="cr-card">
-    <h3>⚠️ Ujawnić hasło?</h3>
+    <h3><span id="ic-warn-reveal"></span> Ujawnić hasło?</h3>
     <p>Hasło będzie widoczne na ekranie — upewnij się, że nie przechwytuje go kamera streamu.</p>
     <div class="cr-btns">
       <button class="cr-no" onclick="document.getElementById('confirm-reveal').classList.remove('active')">Anuluj</button>
@@ -429,7 +429,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 
 <!-- ══ CUSTOM CONTEXT MENU ══════════════════════════════ -->
 <div id="ctx-menu" style="display:none">
-  <button id="ctx-btn" onclick="ctxAction()">👁 Pokaż hasło</button>
+  <button id="ctx-btn" onclick="ctxAction()"><span id="ic-ctx-eye"></span> Pokaż hasło</button>
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -458,7 +458,14 @@ const ICONS = {
   trash: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
   check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
   send: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
-  star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
+  star: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+  warning: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  xmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>`,
+  eyeshow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
+  eyehide: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`,
+  medal1: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7" fill="#ffd700" stroke="#e5a800"/><path d="M8 3h8l-1.5 5H9.5z" fill="#ffd700" stroke="#e5a800"/><text x="12" y="18.5" text-anchor="middle" font-family="Fredoka One,cursive" font-size="7" fill="#7a5800" stroke="none">1</text></svg>`,
+  medal2: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7" fill="#c0c0c0" stroke="#909090"/><path d="M8 3h8l-1.5 5H9.5z" fill="#c0c0c0" stroke="#909090"/><text x="12" y="18.5" text-anchor="middle" font-family="Fredoka One,cursive" font-size="7" fill="#444" stroke="none">2</text></svg>`,
+  medal3: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7" fill="#cd7f32" stroke="#a05a20"/><path d="M8 3h8l-1.5 5H9.5z" fill="#cd7f32" stroke="#a05a20"/><text x="12" y="18.5" text-anchor="middle" font-family="Fredoka One,cursive" font-size="7" fill="#5a2800" stroke="none">3</text></svg>`
 };
 
 function ic(name, size=20, color='currentColor'){
@@ -475,6 +482,9 @@ function bigIc(name, color='var(--teal)'){
   const sized = svg.replace('viewBox="0 0 24 24"', 'viewBox="0 0 24 24" width="56" height="56"');
   return `<span style="display:inline-flex;color:${color}">${sized}</span>`;
 }
+// Mask string for streamer mode: space → underscore, other chars → filled diamond
+function maskStr(str){ return [...str].map(c=>c===' '?'_':'✦').join(''); }
+
 const WORDS = [
   "kot","pies","dom","samochód","rower","słońce","księżyc","gwiazda",
   "drzewo","kwiat","rzeka","góra","zamek","smok","robot","pizza",
@@ -516,8 +526,8 @@ function toggleStreamerMode(on){
       jc.style.color='transparent';
       jc.style.caretColor='transparent';
       jcStars.style.display='flex';
-      jcStars.innerHTML='✦'.repeat(jc.value.length)+'<span class="stars-caret"></span>';
-      jc.oninput=()=>{ jcStars.innerHTML='✦'.repeat(jc.value.length)+'<span class="stars-caret"></span>'; };
+      jcStars.innerHTML=maskStr(jc.value)+'<span class="stars-caret"></span>';
+      jc.oninput=()=>{ jcStars.innerHTML=maskStr(jc.value)+'<span class="stars-caret"></span>'; };
     } else {
       jc.style.color='';
       jc.style.caretColor='';
@@ -546,8 +556,7 @@ function openCustomWordOverlay(){
     inp.style.color='transparent';
     inp.style.caretColor='transparent';
     inp.oninput=()=>{
-      const len=inp.value.length;
-      stars.innerHTML='✦'.repeat(len)+'<span class="stars-caret"></span>';
+      stars.innerHTML=maskStr(inp.value)+'<span class="stars-caret"></span>';
     };
   } else {
     stars.style.display='none';
@@ -572,7 +581,7 @@ function toggleCustomWordVisibility(){
     stars.style.display='flex';
     inp.style.color='transparent';
     inp.style.caretColor='transparent';
-    stars.innerHTML='✦'.repeat(inp.value.length)+'<span class="stars-caret"></span>';
+    stars.innerHTML=maskStr(inp.value)+'<span class="stars-caret"></span>';
     eye.innerHTML='<svg id="eye-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   }
 }
@@ -608,9 +617,9 @@ function openCtxMenu(x,y,btn){
   const menu=document.getElementById('ctx-menu');
   const ctxBtn=document.getElementById('ctx-btn');
   if(ctxWordRevealed){
-    ctxBtn.innerHTML='🙈 Ukryj hasło';
+    ctxBtn.innerHTML=ic('eyehide',16,'var(--text)')+' Ukryj hasło';
   } else {
-    ctxBtn.innerHTML='👁 Pokaż hasło';
+    ctxBtn.innerHTML=ic('eyeshow',16,'var(--text)')+' Pokaż hasło';
   }
   menu.style.display='block';
   // Position within viewport
@@ -633,7 +642,7 @@ function ctxAction(){
   const wasRevealed=ctxWordRevealed;
   closeCtxMenu();
   if(wasRevealed){
-    target.textContent='*'.repeat(target.dataset.real.length);
+    target.textContent=maskStr(target.dataset.real);
     target.dataset.revealed='0';
   } else {
     target.textContent=target.dataset.real;
@@ -649,7 +658,7 @@ function revealStreamerWord(el){
   if(drawerWordRevealed){
     // Already revealed — hide again, no confirm
     drawerWordRevealed=false;
-    el.textContent='*'.repeat(el.dataset.real.length);
+    el.textContent=maskStr(el.dataset.real);
     return;
   }
   // Not revealed — show confirm
@@ -672,7 +681,7 @@ function setDrawerWord(word){
   if(!sameWord) drawerWordRevealed=false;
   wordEl2.dataset.real=word;
   if(streamerMode){
-    if(!drawerWordRevealed) wordEl2.textContent='*'.repeat(word.length);
+    if(!drawerWordRevealed) wordEl2.textContent=maskStr(word);
     wordEl2.style.cursor='pointer';
     hint.style.display='block';
   } else {
@@ -730,6 +739,8 @@ function initIcons(){
     'ic-dp-btn':        ic('dice',20,'var(--teal)'),
     'ic-check-custom':  ic('check',16,'#fff'),
     'ic-home-btn':      ic('home',16,'#fff'),
+    'ic-warn-reveal':   ic('warning',18,'var(--yellow)'),
+    'ic-ctx-eye':       ic('eyeshow',16,'var(--text)'),
   };
   Object.entries(slots).forEach(([id,html])=>{
     const el=document.getElementById(id);
@@ -802,7 +813,7 @@ let roomHostId='';
 function updateLobbyCode(){
   const el=document.getElementById('lob-code');
   if(!el) return;
-  el.textContent = streamerMode ? '*'.repeat(roomCode.length||4) : roomCode;
+  el.textContent = streamerMode ? maskStr(roomCode||'----') : roomCode;
 }
 
 function enterLobby(){
@@ -810,7 +821,7 @@ function enterLobby(){
 
   // Ustaw kod natychmiast
   const lobEl = document.getElementById('lob-code');
-  lobEl.textContent = streamerMode ? '*'.repeat(roomCode.length) : roomCode;
+  lobEl.textContent = streamerMode ? maskStr(roomCode) : roomCode;
 
   roomRef.child('host').once('value',s=>{ roomHostId=s.val()||''; renderLobbyPlayers(); });
   roomRef.child('players').on('value',s=>{ players=s.val()||{}; renderLobbyPlayers(); });
@@ -1054,7 +1065,7 @@ function handleWordChoice(){
         b.className='word-btn';
         b.dataset.real=w;
         b.dataset.revealed='0';
-        b.textContent=streamerMode?'*'.repeat(w.length):w;
+        b.textContent=streamerMode?maskStr(w):w;
         b.onclick=()=>pickWord(b.dataset.real);
         if(streamerMode) attachWordChoiceEvents(b);
         el.appendChild(b);
@@ -1106,7 +1117,7 @@ function updateUI(d){
     tools.style.display='flex';
     document.getElementById('game-canvas').style.cursor='crosshair';
     inp.disabled=true; snd.disabled=true;
-    inp.placeholder='Ty rysujesz — nie zgadujesz 😄';
+    inp.placeholder='Ty rysujesz — nie zgadujesz!';
   } else if(isDrawer && !isDrawingPhase){
     banner.style.display='none';
     tools.style.display='none';
@@ -1229,8 +1240,10 @@ function showRoundEnd(){
   const sorted=Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
   const ul=document.getElementById('re-list'); ul.innerHTML='';
   sorted.forEach(([id,p],i)=>{
+    const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
+    const prefix=medalSvg[i]||`<span style="font-family:'Fredoka One',cursive;color:var(--muted);font-size:.9rem;width:22px;display:inline-flex;justify-content:center">${i+1}.</span>`;
     ul.innerHTML+=`<li class="${i===0?'gold':''}">`+
-      `<span>${['🥇','🥈','🥉'][i]||'  '} ${p.name}${id===myId?' (Ty)':''}</span>`+
+      `<span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span>`+
       `<span class="pts-ok">${p.score} pkt</span></li>`;
   });
   showOv('round');
@@ -1274,8 +1287,10 @@ function showGameOver(){
   const sorted=Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
   const ul=document.getElementById('go-list'); ul.innerHTML='';
   sorted.forEach(([id,p],i)=>{
+    const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
+    const prefix=medalSvg[i]||`<span style="font-family:'Fredoka One',cursive;color:var(--muted);font-size:.9rem;width:22px;display:inline-flex;justify-content:center">${i+1}.</span>`;
     ul.innerHTML+=`<li class="${i===0?'gold':''}">`+
-      `<span>${['🥇','🥈','🥉'][i]||`${i+1}.`} ${p.name}${id===myId?' (Ty)':''}</span>`+
+      `<span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span>`+
       `<span class="pts-ok">${p.score} pkt</span></li>`;
   });
   showOv('over');

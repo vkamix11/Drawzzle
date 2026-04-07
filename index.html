@@ -453,6 +453,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
 
 <script>
 // ═══════════════════════════════════════════════════
@@ -721,6 +722,48 @@ const FIREBASE_CFG = {
 if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CFG);
 db = firebase.database();
 
+// ═══════════════════════════════════════════════════
+//  ABLY — zastępuje liveStroke w Firebase
+//  Wklej tutaj swój klucz API z Ably (tylko do odczytu!)
+// ═══════════════════════════════════════════════════
+const ABLY_KEY = 'z9s6Yg.e43lLQ:Yr0gLvQ7bItzn6vYI-jGeY4GGQYGCduLl6UOx5xlc0c';
+let ablyClient = null;
+let ablyChannel = null;
+
+function initAbly(channelName) {
+  if (ablyClient) { ablyClient.close(); ablyClient = null; }
+  ablyClient = new Ably.Realtime({ key: ABLY_KEY, clientId: myId });
+  ablyChannel = ablyClient.channels.get('drawzzle-' + channelName);
+}
+
+function ablyPublishLive(pts, color, size, strokeId) {
+  if (!ablyChannel) return;
+  ablyChannel.publish('live', { id: strokeId, pts, color, size });
+}
+
+function ablyPublishStopLive() {
+  if (!ablyChannel) return;
+  ablyChannel.publish('live', null);
+}
+
+function ablySubscribeLive() {
+  if (!ablyChannel) return;
+  ablyChannel.subscribe('live', msg => {
+    if (isDrawer) return;
+    const live = msg.data;
+    if (!live) {
+      receivedLiveId = -1; receivedLiveBuffer = [];
+      if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+      return;
+    }
+    if (live.id !== receivedLiveId) { receivedLiveId = live.id; receivedLiveBuffer = []; }
+    if (live.pts && live.pts.length) receivedLiveBuffer.push(...live.pts);
+    receivedLiveBuffer._color = live.color;
+    receivedLiveBuffer._size = live.size;
+    if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+  });
+}
+
 function initIcons(){
   const slots = {
     'ic-create':        ic('dice',18,'var(--yellow)'),
@@ -791,6 +834,7 @@ async function createRoom(){
   });
   roomRef.onDisconnect().remove();
   await addMeToRoom();
+  initAbly(roomCode);
   enterLobby();
 }
 
@@ -807,6 +851,7 @@ async function joinRoom(){
   if(d.status!=='lobby'){ setErr('menu-err','❌ Gra już trwa — nie możesz dołączyć.'); return; }
   isHost=(d.host===myId);
   await addMeToRoom();
+  initAbly(roomCode);
   enterLobby();
 }
 
@@ -1265,7 +1310,6 @@ async function doNextRound(){
     Object.keys(d.players||{}).forEach(id=>{ updates['players/'+id+'/hasGuessed']=false; });
     // ── OPTYMALIZACJA: usuwamy kilka węzłów jednym update() null zamiast 4× await remove() ──
     updates.strokes=null;
-    updates.liveStroke=null;
     updates.chat=null;
     updates.roundEndTrigger=null;
     if(nextRound>total){ updates.status='gameover'; await roomRef.update(updates); return; }
@@ -1417,26 +1461,8 @@ function setupCanvas(){
     }
   });
 
-  // ── LIVE STROKE (odbiorca) z rAF + delta ─────────────────────────────
-  // Zamiast przerysowywać canvas przy każdym evencie Firebase,
-  // buforujemy dane i renderujemy w requestAnimationFrame → gładsze FPS.
-  roomRef.child('liveStroke').on('value',s=>{
-    if(isDrawer) return;
-    const live=s.val();
-    if(!live){
-      receivedLiveId=-1; receivedLiveBuffer=[];
-      if(!liveRafPending){ liveRafPending=true; requestAnimationFrame(flushLiveCanvas); }
-      return;
-    }
-    // Nowy stroke → czyść bufor
-    if(live.id!==receivedLiveId){ receivedLiveId=live.id; receivedLiveBuffer=[]; }
-    // Dołącz deltę (nowe punkty od ostatniego ticku)
-    if(live.pts && live.pts.length) receivedLiveBuffer.push(...live.pts);
-    // Zapamiętaj metadane do rysowania
-    receivedLiveBuffer._color=live.color;
-    receivedLiveBuffer._size=live.size;
-    if(!liveRafPending){ liveRafPending=true; requestAnimationFrame(flushLiveCanvas); }
-  });
+  // ── LIVE STROKE (odbiorca) przez Ably — super niskie opóźnienie ──────
+  ablySubscribeLive();
 }
 
 // Renderowanie live stroke w rAF — jeden draw call na klatkę
@@ -1498,14 +1524,12 @@ function drawMove(e){
   ctx.strokeStyle=selColor; ctx.lineWidth=selSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
   strokePts.push(p);
   const now=Date.now();
-  if(now-liveSendTimer>60){
+  if(now-liveSendTimer>50){
     liveSendTimer=now;
-    // ── DELTA: wysyłamy tylko NOWE punkty od ostatniego ticku ──
-    // Zamiast rosnącego strokePts[] (O(n) każdy pakiet),
-    // wysyłamy pts.slice(lastSentIdx) → stały mały rozmiar pakietu.
+    // ── DELTA przez Ably — tylko nowe punkty od ostatniego ticku ──
     const delta=strokePts.slice(lastSentIdx);
-    lastSentIdx=Math.max(0, strokePts.length-1); // zostaw 1 punkt overlap dla ciągłości
-    roomRef.child('liveStroke').set({id:liveStrokeId, color:selColor, size:selSize, pts:delta});
+    lastSentIdx=Math.max(0, strokePts.length-1);
+    ablyPublishLive(delta, selColor, selSize, liveStrokeId);
   }
 }
 
@@ -1522,7 +1546,7 @@ async function stopStroke(){
     drawStrokeToCtx(offCtx, strokeData);
     updateUndoBtn();
   }
-  roomRef.child('liveStroke').remove();
+  ablyPublishStopLive();
   strokePts=[]; lastSentIdx=0;
 }
 
@@ -1533,7 +1557,7 @@ async function clearCanvas(){
   myStrokeKeys=[];
   updateUndoBtn();
   await roomRef.child('strokes').remove();
-  await roomRef.child('liveStroke').remove();
+  ablyPublishStopLive();
   await roomRef.child('clearCount').set((gameData.clearCount||0)+1);
 }
 

@@ -1412,10 +1412,27 @@ function setupCanvas(){
   roomRef.child('liveStroke').on('value',s=>{
     if(isDrawer) return;
     const live=s.val();
-    // Skopiuj offscreen (wszystkie ukończone) do main
+    if(!live){
+      liveAccumPts=[];
+      ctx.drawImage(offscreen,0,0);
+      return;
+    }
+    // nowa kreska — resetuj akumulator
+    if(live.sid !== liveAccumStrokeId){
+      liveAccumPts=[];
+      liveAccumStrokeId=live.sid;
+      liveAccumColor=live.color;
+      liveAccumSize=live.size;
+    }
+    // dorzuć nowe punkty do akumulatora
+    if(live.delta && live.delta.length>0){
+      liveAccumPts.push(...live.delta);
+    }
+    // przerysuj: ukończone kreski + akumulowana live kreska
     ctx.drawImage(offscreen,0,0);
-    // Dorysuj live stroke na wierzchu
-    if(live) drawStrokeToCtx(ctx, live);
+    if(liveAccumPts.length>1){
+      drawStrokeToCtx(ctx,{color:liveAccumColor,size:liveAccumSize,points:liveAccumPts});
+    }
   });
 }
 
@@ -1449,6 +1466,9 @@ function resetCanvas(){
 }
 
 let liveSendTimer=0;
+let lastSentIdx=0;
+let currentStrokeId=0;
+let liveAccumPts=[], liveAccumColor='#000', liveAccumSize=7, liveAccumStrokeId=-1;
 function drawMove(e){
   if(!isDrawer||!isDrawing) return;
   const p=getPos(e);
@@ -1457,9 +1477,13 @@ function drawMove(e){
   ctx.strokeStyle=selColor; ctx.lineWidth=selSize; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
   strokePts.push(p);
   const now=Date.now();
-  if(now-liveSendTimer>60){
+  if(now-liveSendTimer>20){
     liveSendTimer=now;
-    roomRef.child('liveStroke').set({color:selColor,size:selSize,points:strokePts.slice()});
+    const delta=strokePts.slice(lastSentIdx);
+    lastSentIdx=strokePts.length;
+    if(delta.length>0){
+      roomRef.child('liveStroke').set({color:selColor,size:selSize,delta,sid:currentStrokeId});
+    }
   }
 }
 
@@ -1481,6 +1505,8 @@ async function stopStroke(){
   }
   roomRef.child('liveStroke').remove();
   strokePts=[];
+  lastSentIdx=0;
+  currentStrokeId++;
 }
 
 function dotAt(p){ ctx.beginPath(); ctx.arc(p.x,p.y,selSize/2,0,Math.PI*2); ctx.fillStyle=selColor; ctx.fill(); }

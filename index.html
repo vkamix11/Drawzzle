@@ -159,6 +159,10 @@ input::placeholder{color:var(--muted);font-weight:600}
 .word-hidden{cursor:pointer;user-select:none;filter:blur(6px);transition:filter .2s}
 .word-hidden.revealed{filter:none}
 
+/* Tryb streamera — zaznaczenie tekstu nie ujawnia zawartości */
+.streamer-hidden::selection{color:transparent;background:rgba(199,125,255,0.35)}
+.streamer-hidden::-moz-selection{color:transparent;background:rgba(199,125,255,0.35)}
+
 /* ── CUSTOM WORD INPUT ─── */
 input[type=password]{background:var(--surface);border:2px solid var(--border);border-radius:11px;padding:12px 16px;color:var(--text);font-family:'Nunito',sans-serif;font-size:1rem;font-weight:700;width:100%;outline:none;transition:border-color .2s}
 input[type=password]:focus{border-color:var(--purple)}
@@ -204,6 +208,10 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 
 /* Fill cursor */
 .canvas-wrap.fill-mode #game-canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E🪣%3C/text%3E%3C/svg%3E") 0 20, crosshair}
+/* LAN badge */
+#lan-badge{display:none;align-items:center;gap:5px;background:rgba(6,214,160,.13);border:1px solid rgba(6,214,160,.35);border-radius:8px;padding:4px 10px;font-size:.72rem;font-weight:800;color:var(--green);letter-spacing:.04em;white-space:nowrap}
+#lan-badge .lan-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lan-pulse 1.6s ease-in-out infinite}
+@keyframes lan-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
 
 @media(max-width:760px){
   #screen-game{flex-direction:column}
@@ -281,6 +289,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
         <div class="drawer-txt" id="g-drawer">Rysuje: —</div>
       </div>
       <div class="word-hint" id="g-word">_ _ _ _ _</div>
+      <div id="lan-badge"><div class="lan-dot"></div>LAN P2P</div>
       <div class="timer" id="g-timer">
         <svg class="timer-ring" viewBox="0 0 50 50">
           <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
@@ -557,12 +566,14 @@ function toggleStreamerMode(on){
     if(on){
       jc.style.color='transparent';
       jc.style.caretColor='transparent';
+      jc.classList.add('streamer-hidden');
       jcStars.style.display='flex';
       jcStars.innerHTML=maskStr(jc.value)+'<span class="stars-caret"></span>';
       jc.oninput=()=>{ jcStars.innerHTML=maskStr(jc.value)+'<span class="stars-caret"></span>'; };
     } else {
       jc.style.color='';
       jc.style.caretColor='';
+      jc.classList.remove('streamer-hidden');
       jcStars.style.display='none';
       jcStars.innerHTML='';
       jc.oninput=null;
@@ -587,6 +598,7 @@ function openCustomWordOverlay(){
     eye.style.display='flex';
     inp.style.color='transparent';
     inp.style.caretColor='transparent';
+    inp.classList.add('streamer-hidden');
     inp.oninput=()=>{ stars.innerHTML=maskStr(inp.value)+'<span class="stars-caret"></span>'; };
   } else {
     stars.style.display='none';
@@ -594,6 +606,7 @@ function openCustomWordOverlay(){
     eye.style.display='none';
     inp.style.color='var(--text)';
     inp.style.caretColor='var(--purple)';
+    inp.classList.remove('streamer-hidden');
     inp.oninput=null;
   }
   showOv('custom');
@@ -606,11 +619,13 @@ function toggleCustomWordVisibility(){
   if(customWordVisible){
     stars.style.display='none';
     inp.style.color='var(--text)';
+    inp.classList.remove('streamer-hidden');
     eye.innerHTML='<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
   } else {
     stars.style.display='flex';
     inp.style.color='transparent';
     inp.style.caretColor='transparent';
+    inp.classList.add('streamer-hidden');
     stars.innerHTML=maskStr(inp.value)+'<span class="stars-caret"></span>';
     eye.innerHTML='<svg id="eye-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
   }
@@ -737,31 +752,233 @@ function initAbly(channelName) {
 }
 
 function ablyPublishLive(pts, color, size, strokeId) {
-  if (!ablyChannel) return;
-  ablyChannel.publish('live', { id: strokeId, pts, color, size });
+  const data = { id: strokeId, pts, color, size };
+  // Najpierw spróbuj WebRTC (LAN P2P), fallback do Ably
+  const sentRTC = rtcBroadcast(data);
+  if (!sentRTC && ablyChannel) ablyChannel.publish('live', data);
 }
 
 function ablyPublishStopLive() {
-  if (!ablyChannel) return;
-  ablyChannel.publish('live', null);
+  const sentRTC = rtcBroadcast(null);
+  if (!sentRTC && ablyChannel) ablyChannel.publish('live', null);
+}
+
+// ── Wspólny handler live stroke (Ably + Firebase mogą go wołać) ──────────
+function handleLiveDelta(live) {
+  // Ably przesyła DELTY — dołącz nowe punkty do bufora
+  if (isDrawer) return;
+  if (!live) {
+    receivedLiveId = -1; receivedLiveBuffer = [];
+    if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+    return;
+  }
+  if (live.id !== receivedLiveId) { receivedLiveId = live.id; receivedLiveBuffer = []; }
+  if (live.pts && live.pts.length) receivedLiveBuffer.push(...live.pts);
+  receivedLiveBuffer._color = live.color;
+  receivedLiveBuffer._size = live.size;
+  if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+}
+
+function handleLiveFull(live) {
+  // Firebase przesyła PEŁNY stroke — używaj jeśli ma więcej punktów niż bufor
+  if (isDrawer || !live) return;
+  if (live.id !== receivedLiveId) { receivedLiveId = live.id; receivedLiveBuffer = []; }
+  if (live.pts && live.pts.length > receivedLiveBuffer.length) {
+    const color = live.color, size = live.size;
+    receivedLiveBuffer = [...live.pts];
+    receivedLiveBuffer._color = color;
+    receivedLiveBuffer._size = size;
+    if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+  }
 }
 
 function ablySubscribeLive() {
   if (!ablyChannel) return;
-  ablyChannel.subscribe('live', msg => {
-    if (isDrawer) return;
-    const live = msg.data;
-    if (!live) {
-      receivedLiveId = -1; receivedLiveBuffer = [];
-      if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
-      return;
-    }
-    if (live.id !== receivedLiveId) { receivedLiveId = live.id; receivedLiveBuffer = []; }
-    if (live.pts && live.pts.length) receivedLiveBuffer.push(...live.pts);
-    receivedLiveBuffer._color = live.color;
-    receivedLiveBuffer._size = live.size;
-    if (!liveRafPending) { liveRafPending = true; requestAnimationFrame(flushLiveCanvas); }
+  ablyChannel.subscribe('live', msg => handleLiveDelta(msg.data));
+}
+
+// ── Firebase Live Stroke — fallback / uzupełnienie Ably ──────────────────
+let fbLiveSendTimer = 0;
+let fbLiveRef = null;
+
+function firebasePublishLive(allPts, color, size, strokeId) {
+  if (!roomRef) return;
+  const now = Date.now();
+  if (now - fbLiveSendTimer < 80) return; // max ~12 razy/s
+  fbLiveSendTimer = now;
+  roomRef.child('livestroke').set({ id: strokeId, pts: allPts, color, size });
+}
+
+function firebasePublishStopLive() {
+  if (!roomRef) return;
+  roomRef.child('livestroke').set(null);
+}
+
+function firebaseSubscribeLive() {
+  if (fbLiveRef) { fbLiveRef.off(); fbLiveRef = null; }
+  if (!roomRef) return;
+  fbLiveRef = roomRef.child('livestroke');
+  fbLiveRef.on('value', s => handleLiveFull(s.val()));
+}
+
+function firebaseUnsubscribeLive() {
+  if (fbLiveRef) { fbLiveRef.off(); fbLiveRef = null; }
+}
+
+// ═══════════════════════════════════════════════════
+//  WebRTC P2P — niskie opóźnienia w sieci lokalnej
+//  Sygnalizacja przez Firebase, dane rysowania P2P
+// ═══════════════════════════════════════════════════
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+const rtcPeers = {};   // peerId -> { pc, dc }
+let rtcRef = null;
+let lanBadgeTimer = null;
+
+function initRTC() {
+  if (!roomRef || !myId) return;
+  rtcRef = roomRef.child('rtc');
+  rtcRef.child(myId).onDisconnect().remove();
+
+  // Odbiór sygnałów adresowanych do nas
+  rtcRef.child(myId).on('child_added', snap => {
+    const fromId = snap.key;
+    const sig = snap.val();
+    if (!sig || fromId === myId) return;
+    processRtcSignal(fromId, sig);
+    snap.ref.remove();
   });
+
+  // Inicjuj połączenie z już obecnymi graczami (mniejszy ID inicjuje)
+  roomRef.child('players').once('value', s => {
+    Object.keys(s.val() || {}).forEach(pid => {
+      if (pid !== myId && myId < pid) setTimeout(() => initiateRTC(pid), 400);
+    });
+  });
+
+  // Inicjuj połączenie z nowymi graczami
+  roomRef.child('players').on('child_added', s => {
+    const pid = s.key;
+    if (pid !== myId && myId < pid && !rtcPeers[pid]) {
+      setTimeout(() => initiateRTC(pid), 400);
+    }
+  });
+
+  roomRef.child('players').on('child_removed', s => destroyRtcPeer(s.key));
+
+  // Odświeżaj badge co 2s
+  lanBadgeTimer = setInterval(updateLanBadge, 2000);
+}
+
+function newRtcPeer(peerId) {
+  if (rtcPeers[peerId]) destroyRtcPeer(peerId);
+  const pc = new RTCPeerConnection(RTC_CONFIG);
+  const entry = { pc, dc: null };
+  rtcPeers[peerId] = entry;
+
+  pc.onicecandidate = e => {
+    if (e.candidate && rtcRef) {
+      rtcRef.child(peerId).child(myId).push({ type: 'ice', candidate: e.candidate.toJSON() });
+    }
+  };
+  pc.onconnectionstatechange = () => {
+    if (['disconnected', 'failed', 'closed'].includes(pc.connectionState)) {
+      destroyRtcPeer(peerId);
+      updateLanBadge();
+    }
+    if (pc.connectionState === 'connected') updateLanBadge();
+  };
+  pc.ondatachannel = e => setupRtcDC(peerId, e.channel);
+  return entry;
+}
+
+function setupRtcDC(peerId, dc) {
+  if (rtcPeers[peerId]) rtcPeers[peerId].dc = dc;
+  dc.onopen  = () => updateLanBadge();
+  dc.onclose = () => updateLanBadge();
+  dc.onmessage = e => {
+    try {
+      const data = e.data === 'null' ? null : JSON.parse(e.data);
+      handleLiveDelta(data);
+    } catch (err) {}
+  };
+}
+
+async function initiateRTC(peerId) {
+  if (rtcPeers[peerId]) return;
+  const entry = newRtcPeer(peerId);
+  const dc = entry.pc.createDataChannel('d', { ordered: false, maxRetransmits: 0 });
+  setupRtcDC(peerId, dc);
+  const offer = await entry.pc.createOffer();
+  await entry.pc.setLocalDescription(offer);
+  if (rtcRef) rtcRef.child(peerId).child(myId).push({ type: 'offer', sdp: offer.sdp });
+}
+
+async function processRtcSignal(fromId, sig) {
+  try {
+    if (sig.type === 'offer') {
+      const entry = rtcPeers[fromId] || newRtcPeer(fromId);
+      await entry.pc.setRemoteDescription({ type: 'offer', sdp: sig.sdp });
+      const answer = await entry.pc.createAnswer();
+      await entry.pc.setLocalDescription(answer);
+      if (rtcRef) rtcRef.child(fromId).child(myId).push({ type: 'answer', sdp: answer.sdp });
+
+    } else if (sig.type === 'answer') {
+      const entry = rtcPeers[fromId];
+      if (entry) await entry.pc.setRemoteDescription({ type: 'answer', sdp: sig.sdp });
+
+    } else if (sig.type === 'ice') {
+      const entry = rtcPeers[fromId];
+      if (entry && sig.candidate) {
+        try { await entry.pc.addIceCandidate(new RTCIceCandidate(sig.candidate)); } catch (e) {}
+      }
+    }
+  } catch (e) { console.warn('[RTC] signal error', e); }
+}
+
+function destroyRtcPeer(peerId) {
+  const entry = rtcPeers[peerId];
+  if (!entry) return;
+  try { entry.pc.close(); } catch (e) {}
+  delete rtcPeers[peerId];
+}
+
+function closeAllRTC() {
+  Object.keys(rtcPeers).forEach(destroyRtcPeer);
+  if (lanBadgeTimer) { clearInterval(lanBadgeTimer); lanBadgeTimer = null; }
+  if (rtcRef) { rtcRef.child(myId).remove(); rtcRef = null; }
+}
+
+// Zwraca liczbę peerów z otwartym DataChannel
+function rtcBroadcast(data) {
+  const str = JSON.stringify(data);
+  let sent = 0;
+  Object.values(rtcPeers).forEach(({ dc }) => {
+    if (dc && dc.readyState === 'open') {
+      try { dc.send(str); sent++; } catch (e) {}
+    }
+  });
+  return sent;
+}
+
+function rtcConnectedCount() {
+  return Object.values(rtcPeers).filter(({ dc }) => dc && dc.readyState === 'open').length;
+}
+
+function updateLanBadge() {
+  const badge = document.getElementById('lan-badge');
+  if (!badge) return;
+  const n = rtcConnectedCount();
+  if (n > 0) {
+    badge.style.display = 'flex';
+    badge.title = `WebRTC P2P aktywny — ${n} gracz${n === 1 ? '' : 'y'} w sieci LAN`;
+  } else {
+    badge.style.display = 'none';
+  }
 }
 
 function initIcons(){
@@ -835,6 +1052,7 @@ async function createRoom(){
   roomRef.onDisconnect().remove();
   await addMeToRoom();
   initAbly(roomCode);
+  initRTC();
   enterLobby();
 }
 
@@ -852,6 +1070,7 @@ async function joinRoom(){
   isHost=(d.host===myId);
   await addMeToRoom();
   initAbly(roomCode);
+  initRTC();
   enterLobby();
 }
 
@@ -1345,6 +1564,8 @@ function showGameOver(){
 
 async function backToMenu(){
   hideOv('over'); clearInterval(timerIv);
+  firebaseUnsubscribeLive();
+  closeAllRTC();
   if(roomRef){ roomRef.off(); if(isHost) await roomRef.remove(); roomRef=null; }
   isHost=false; isDrawer=false; myGuessed=false; players={}; gameData={};
   completedStrokes=[]; completedStrokeKeys=new Set(); myStrokeKeys=[]; lastClearCount=0;
@@ -1461,8 +1682,9 @@ function setupCanvas(){
     }
   });
 
-  // ── LIVE STROKE (odbiorca) przez Ably — super niskie opóźnienie ──────
+  // ── LIVE STROKE (odbiorca) — Ably (delta) + Firebase (full, fallback) ──
   ablySubscribeLive();
+  firebaseSubscribeLive();
 }
 
 // Renderowanie live stroke w rAF — jeden draw call na klatkę
@@ -1530,6 +1752,7 @@ function drawMove(e){
     const delta=strokePts.slice(lastSentIdx);
     lastSentIdx=Math.max(0, strokePts.length-1);
     ablyPublishLive(delta, selColor, selSize, liveStrokeId);
+    firebasePublishLive([...strokePts], selColor, selSize, liveStrokeId);
   }
 }
 
@@ -1547,7 +1770,7 @@ async function stopStroke(){
     updateUndoBtn();
   }
   ablyPublishStopLive();
-  strokePts=[]; lastSentIdx=0;
+  firebasePublishStopLive();
 }
 
 function dotAt(p){ ctx.beginPath(); ctx.arc(p.x,p.y,selSize/2,0,Math.PI*2); ctx.fillStyle=selColor; ctx.fill(); }
@@ -1558,6 +1781,7 @@ async function clearCanvas(){
   updateUndoBtn();
   await roomRef.child('strokes').remove();
   ablyPublishStopLive();
+  firebasePublishStopLive();
   await roomRef.child('clearCount').set((gameData.clearCount||0)+1);
 }
 

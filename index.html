@@ -1768,13 +1768,11 @@ async function stopStroke(){
   isDrawing=false;
   if(strokePts.length>0){
     const strokeData={color:selColor,size:selSize,points:strokePts};
-    const ref=roomRef.child('strokes').push(strokeData);
-    const key=ref.key;
+    const newRef=roomRef.child('strokes').push();
+    const key=newRef.key;
     myStrokeKeys.push(key);
-    completedStrokes.push(strokeData);
-    completedStrokeKeys.add(key);   // ← Set.add()
-    drawStrokeToCtx(offCtx, strokeData);
     updateUndoBtn();
+    newRef.set(strokeData); // child_added obsługuje completedStrokes/Keys/offCtx
   }
   ablyPublishStopLive();
   firebasePublishStopLive();
@@ -1815,14 +1813,12 @@ function updateUndoBtn(){
 // ─── FILL TOOL ───────────────────────────────────────
 async function doFill(x, y){
   if(!isDrawer) return;
-  floodFill(ctx, x, y, selColor);
-  floodFill(offCtx, x, y, selColor);
+  floodFill(ctx, x, y, selColor); // natychmiastowy feedback na głównym canvasie rysującego
   const fillData={type:'fill', x, y, color:selColor};
-  const ref=roomRef.child('strokes').push(fillData);
-  const key=ref.key;
+  const newRef=roomRef.child('strokes').push();
+  const key=newRef.key;
   myStrokeKeys.push(key);
-  completedStrokes.push(fillData);
-  completedStrokeKeys.add(key);   // ← Set.add()
+  newRef.set(fillData); // child_added obsługuje offCtx + zgadujących
   updateUndoBtn();
 }
 

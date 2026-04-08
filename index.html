@@ -1843,14 +1843,16 @@ function floodFill(targetCtx, startX, startY, fillHex){
   const fill=hexToRgb(fillHex);
 
   const base=(startY*W+startX)*4;
-  const tr=data[base], tg=data[base+1], tb=data[base+2];
+  const tr=data[base], tg=data[base+1], tb=data[base+2], ta=data[base+3];
 
-  if(tr===fill[0]&&tg===fill[1]&&tb===fill[2]) return;
+  // Jeśli piksel już ma kolor wypełnienia (i jest nieprzezroczysty), wyjdź
+  if(ta===255&&tr===fill[0]&&tg===fill[1]&&tb===fill[2]) return;
 
-  // Dokładne dopasowanie — antyaliasing na krawędziach linii
-  // (np. piksel 252,252,252) nie przebija się przez granicę
+  // TOL uwzględnia kanał alpha — kluczowe dla ciemnych/czarnych linii na
+  // transparentnym canvasie, gdzie RGB linii = RGB tła (0,0,0)
+  const TOL=60;
   function matches(i){
-    return data[i]===tr && data[i+1]===tg && data[i+2]===tb;
+    return Math.abs(data[i]-tr)+Math.abs(data[i+1]-tg)+Math.abs(data[i+2]-tb)+Math.abs(data[i+3]-ta)<TOL;
   }
   function setPixel(i){
     data[i]=fill[0]; data[i+1]=fill[1]; data[i+2]=fill[2]; data[i+3]=255;
@@ -1993,3 +1995,4 @@ function buildTools(){
 </script>
 </body>
 </html>
+

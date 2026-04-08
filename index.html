@@ -79,7 +79,7 @@ input::placeholder{color:var(--muted);font-weight:600}
 .timer span{font-family:'Fredoka One',cursive;font-size:1.25rem;position:relative;z-index:1;color:var(--text)}
 .drawer-banner{background:linear-gradient(135deg,rgba(199,125,255,.25),rgba(255,77,109,.2));border:1px solid rgba(199,125,255,.4);border-radius:var(--r);padding:12px 20px;text-align:center;font-size:.88rem;color:#d4a8ff}
 .drawer-banner strong{font-family:'Fredoka One',cursive;font-size:1.5rem;display:block;margin-top:2px;color:#fff;letter-spacing:.04em}
-.canvas-wrap{background:#fff;border-radius:var(--r);overflow:hidden;border:3px solid var(--border);position:relative}
+.canvas-wrap{background:#fff;border-radius:var(--r);overflow:hidden;border:3px solid var(--border);position:relative;transform:translateZ(0)}
 #game-canvas{display:block;width:100%;touch-action:none;cursor:crosshair}
 .tools{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .palette{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
@@ -132,9 +132,9 @@ input::placeholder{color:var(--muted);font-weight:600}
 .btn-send:disabled{opacity:.4;cursor:not-allowed;transform:none}
 
 /* ── OVERLAYS ─────────────────────────────────── */
-.ov{position:fixed;inset:0;background:rgba(13,12,29,.88);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(10px)}
+.ov{position:fixed;inset:0;background:rgba(13,12,29,.93);display:none;align-items:center;justify-content:center;z-index:200;contain:strict}
 .ov.active{display:flex}
-.ov-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:38px 32px;max-width:460px;width:92%;text-align:center;animation:pop .38s cubic-bezier(.175,.885,.32,1.275)}
+.ov-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:38px 32px;max-width:460px;width:92%;text-align:center;animation:pop .28s cubic-bezier(.175,.885,.32,1.275);will-change:transform;transform:translateZ(0)}
 @keyframes pop{from{transform:scale(.78);opacity:0}to{transform:scale(1);opacity:1}}
 .ov-card .big-emoji{font-size:3rem;margin-bottom:8px}
 .ov-card h2{font-family:'Fredoka One',cursive;font-size:2rem;margin-bottom:6px}
@@ -187,7 +187,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 #ctx-menu button.danger:hover{background:rgba(255,77,109,.12)}
 
 /* ── CONFIRM DIALOG ─── */
-#confirm-reveal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(13,12,29,.7);backdrop-filter:blur(6px)}
+#confirm-reveal{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(13,12,29,.88);contain:strict}
 #confirm-reveal.active{display:flex}
 #confirm-reveal .cr-card{background:var(--card);border:1px solid rgba(255,209,102,.3);border-radius:20px;padding:30px 28px;max-width:340px;width:92%;text-align:center}
 #confirm-reveal .cr-card h3{font-family:'Fredoka One',cursive;font-size:1.5rem;margin-bottom:6px}
@@ -210,7 +210,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
 .canvas-wrap.fill-mode #game-canvas{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E🪣%3C/text%3E%3C/svg%3E") 0 20, crosshair}
 /* LAN badge */
 #lan-badge{display:none;align-items:center;gap:5px;background:rgba(6,214,160,.13);border:1px solid rgba(6,214,160,.35);border-radius:8px;padding:4px 10px;font-size:.72rem;font-weight:800;color:var(--green);letter-spacing:.04em;white-space:nowrap}
-#lan-badge .lan-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lan-pulse 1.6s ease-in-out infinite}
+#lan-badge .lan-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lan-pulse 1.6s ease-in-out infinite;will-change:opacity,transform}
 @keyframes lan-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.7)}}
 
 @media(max-width:760px){
@@ -295,7 +295,7 @@ input[type=password]::placeholder{color:var(--muted);font-weight:600}
           <circle cx="25" cy="25" r="22" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="4"/>
           <circle id="timer-arc" cx="25" cy="25" r="22" fill="none" stroke="var(--red)" stroke-width="4"
             stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="0"
-            transform="rotate(-90 25 25)" style="transition:stroke-dashoffset .9s linear,stroke .5s"/>
+            transform="rotate(-90 25 25)"/>
         </svg>
         <span id="g-timerval">120</span>
       </div>
@@ -719,7 +719,7 @@ let isDrawing=false, strokePts=[];
 let completedStrokes=[], lastClearCount=0;
 // ── OPTYMALIZACJA: Set zamiast Array → wyszukiwanie O(1) zamiast O(n) ──
 let completedStrokeKeys=new Set(), myStrokeKeys=[];
-let timerIv=null, strokesRef=null;
+let timerIv=null, timerRafId=null, strokesRef=null;
 let myGuessed=false;
 
 // ═══════════════════════════════════════════════════
@@ -1114,16 +1114,13 @@ function enterLobby(){
 }
 
 function renderLobbyPlayers(){
-  const el=document.getElementById('lob-players'); el.innerHTML='';
   const arr=Object.entries(players);
+  const parts=[];
   arr.forEach(([id,p])=>{
     const ac=avatarColor(id);
-    el.innerHTML+=`<div class="p-item">
-      <div class="avatar" style="background:${ac}22;color:${ac}">${p.name.charAt(0).toUpperCase()}</div>
-      <span style="font-weight:800">${p.name}${id===myId?' <span style="color:var(--muted);font-size:.75rem">(Ty)</span>':''}</span>
-      ${id===roomHostId?'<span class="badge">Host</span>':''}
-    </div>`;
+    parts.push(`<div class="p-item"><div class="avatar" style="background:${ac}22;color:${ac}">${p.name.charAt(0).toUpperCase()}</div><span style="font-weight:800">${p.name}${id===myId?' <span style="color:var(--muted);font-size:.75rem">(Ty)</span>':''}</span>${id===roomHostId?'<span class="badge">Host</span>':''}</div>`);
   });
+  document.getElementById('lob-players').innerHTML=parts.join('');
   const btn=document.getElementById('start-btn');
   if(btn){ btn.disabled=arr.length<2; }
 }
@@ -1340,7 +1337,17 @@ async function pickWord(word){
 // ═══════════════════════════════════════════════════
 //  UPDATE UI
 // ═══════════════════════════════════════════════════
+let _uiRafPending=false;
+let _pendingUIData=null;
 function updateUI(d){
+  _pendingUIData=d;
+  if(_uiRafPending) return;
+  _uiRafPending=true;
+  requestAnimationFrame(_flushUI);
+}
+function _flushUI(){
+  _uiRafPending=false;
+  const d=_pendingUIData; if(!d) return;
   const total=d.totalRounds||5, round=d.currentRound||1;
   document.getElementById('g-round').textContent=`Runda ${round} / ${total}`;
   const dname=(players[d.currentDrawer]||{}).name||'—';
@@ -1399,47 +1406,47 @@ function updateUI(d){
 }
 
 // ═══════════════════════════════════════════════════
-//  TIMER — twardy 2 minuty, bez driftu
+//  TIMER — rAF loop, bez driftu
 // ═══════════════════════════════════════════════════
 const ARC_LEN=138.2;
 function runTimer(startTime){
-  // Zatrzymaj poprzedni timer
-  if(timerIv) clearInterval(timerIv);
-  currentTimerStart = startTime;
+  if(timerIv){ clearInterval(timerIv); timerIv=null; }
+  if(timerRafId){ cancelAnimationFrame(timerRafId); timerRafId=null; }
+  currentTimerStart=startTime;
+  const arcEl=document.getElementById('timer-arc');
+  const valEl=document.getElementById('g-timerval');
+  let lastLeft=-1;
 
   function tick(){
-    const elapsed = (Date.now() - startTime) / 1000;
-    const left = Math.max(0, Math.ceil(ROUND_SEC - elapsed));
-    document.getElementById('g-timerval').textContent = left;
-    const pct = left / ROUND_SEC;
-    document.getElementById('timer-arc').style.strokeDashoffset = ARC_LEN*(1-pct);
-    document.getElementById('timer-arc').style.stroke =
-      left <= 10 ? 'var(--red)' :
-      left <= 30 ? 'var(--yellow)' : 'var(--teal)';
-    if(left <= 0){
-      clearInterval(timerIv);
-      if(isHost) doEndRound();
+    const elapsed=(Date.now()-startTime)/1000;
+    const left=Math.max(0,Math.ceil(ROUND_SEC-elapsed));
+    if(left!==lastLeft){
+      lastLeft=left;
+      valEl.textContent=left;
+      const pct=left/ROUND_SEC;
+      arcEl.style.strokeDashoffset=ARC_LEN*(1-pct);
+      arcEl.style.stroke=left<=10?'var(--red)':left<=30?'var(--yellow)':'var(--teal)';
+      if(left<=0){ if(isHost) doEndRound(); return; }
     }
+    timerRafId=requestAnimationFrame(tick);
   }
-  tick();
-  timerIv = setInterval(tick, 500);
+  timerRafId=requestAnimationFrame(tick);
 }
 
-// ═══════════════════════════════════════════════════
-//  SCORES
+function stopTimer(){
+  if(timerIv){ clearInterval(timerIv); timerIv=null; }
+  if(timerRafId){ cancelAnimationFrame(timerRafId); timerRafId=null; }
+}
 // ═══════════════════════════════════════════════════
 function renderScores(pl){
   const sorted=Object.entries(pl).sort((a,b)=>b[1].score-a[1].score);
-  const el=document.getElementById('g-scores'); el.innerHTML='';
+  const el=document.getElementById('g-scores');
+  const parts=[];
   sorted.forEach(([id,p],i)=>{
     const guessed=p.hasGuessed||(id===gameData.currentDrawer);
-    el.innerHTML+=`<div class="sc-item${guessed?' guessed':''}">
-      <span class="sc-rank">#${i+1}</span>
-      <span class="sc-name">${p.name}${id===myId?' (Ty)':''}</span>
-      ${guessed&&id!==gameData.currentDrawer?`<span style="color:var(--green);font-size:.75rem">${ic('check',16)}</span>`:''}
-      <span class="sc-pts">${p.score}</span>
-    </div>`;
+    parts.push(`<div class="sc-item${guessed?' guessed':''}"><span class="sc-rank">#${i+1}</span><span class="sc-name">${p.name}${id===myId?' (Ty)':''}</span>${guessed&&id!==gameData.currentDrawer?`<span style="color:var(--green);font-size:.75rem">${ic('check',16)}</span>`:''}<span class="sc-pts">${p.score}</span></div>`);
   });
+  el.innerHTML=parts.join('');
 }
 
 // ═══════════════════════════════════════════════════
@@ -1487,24 +1494,24 @@ async function doEndRound(){
   if(!isHost) return;
   const snap=await roomRef.child('status').once('value');
   if(snap.val()!=='drawing') return;
-  clearInterval(timerIv);
+  stopTimer();
   await roomRef.child('status').set('roundend');
 }
 
 function showRoundEnd(){
-  clearInterval(timerIv);
+  stopTimer();
   hideOv('word');
   const roundAtCallTime=gameData.currentRound;
   document.getElementById('re-word').textContent=`Hasło brzmiało: „${gameData.currentWord||''}"`;
   const sorted=Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
-  const ul=document.getElementById('re-list'); ul.innerHTML='';
+  const ul=document.getElementById('re-list');
+  const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
+  const parts=[];
   sorted.forEach(([id,p],i)=>{
-    const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
     const prefix=medalSvg[i]||`<span style="font-family:'Fredoka One',cursive;color:var(--muted);font-size:.9rem;width:22px;display:inline-flex;justify-content:center">${i+1}.</span>`;
-    ul.innerHTML+=`<li class="${i===0?'gold':''}">`+
-      `<span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span>`+
-      `<span class="pts-ok">${p.score} pkt</span></li>`;
+    parts.push(`<li class="${i===0?'gold':''}"><span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span><span class="pts-ok">${p.score} pkt</span></li>`);
   });
+  ul.innerHTML=parts.join('');
   showOv('round');
   let cd=6; document.getElementById('re-cd').textContent=cd;
   const iv=setInterval(()=>{
@@ -1549,21 +1556,21 @@ async function doNextRound(){
 //  GAME OVER
 // ═══════════════════════════════════════════════════
 function showGameOver(){
-  clearInterval(timerIv); hideOv('round');
+  stopTimer(); hideOv('round');
   const sorted=Object.entries(players).sort((a,b)=>b[1].score-a[1].score);
-  const ul=document.getElementById('go-list'); ul.innerHTML='';
+  const ul=document.getElementById('go-list');
+  const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
+  const parts=[];
   sorted.forEach(([id,p],i)=>{
-    const medalSvg=[ic('medal1',22),ic('medal2',22),ic('medal3',22)];
     const prefix=medalSvg[i]||`<span style="font-family:'Fredoka One',cursive;color:var(--muted);font-size:.9rem;width:22px;display:inline-flex;justify-content:center">${i+1}.</span>`;
-    ul.innerHTML+=`<li class="${i===0?'gold':''}">`+
-      `<span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span>`+
-      `<span class="pts-ok">${p.score} pkt</span></li>`;
+    parts.push(`<li class="${i===0?'gold':''}"><span style="display:flex;align-items:center;gap:7px">${prefix} ${p.name}${id===myId?' (Ty)':''}</span><span class="pts-ok">${p.score} pkt</span></li>`);
   });
+  ul.innerHTML=parts.join('');
   showOv('over');
 }
 
 async function backToMenu(){
-  hideOv('over'); clearInterval(timerIv);
+  hideOv('over'); stopTimer();
   firebaseUnsubscribeLive();
   closeAllRTC();
   if(roomRef){ roomRef.off(); if(isHost) await roomRef.remove(); roomRef=null; }
